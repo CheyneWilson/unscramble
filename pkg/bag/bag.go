@@ -1,9 +1,12 @@
 package bag
 
 import (
+	"encoding/json"
 	"fmt"
+	"log/slog"
 	"maps"
 	"math/rand"
+	"os"
 )
 
 type Bag[T comparable] struct {
@@ -126,4 +129,54 @@ func (b *Bag[T]) UniqueCount() int {
 func (b *Bag[T]) Has(item T) bool {
 	_, present := (*b).m[item]
 	return present
+}
+
+func check(e error) {
+	if e != nil {
+		panic(e)
+	}
+}
+
+// ToJSON
+// outputs the contents of a bag to a JSON string
+func (b *Bag[T]) ToJSON() ([]byte, error) {
+	return json.MarshalIndent(b.m, "", "    ")
+}
+
+// ExportJson
+// - write the contents of a bag to a JSON file
+func (b *Bag[T]) ExportJson(path string) {
+
+	f, err := os.Create(path)
+	defer func(f *os.File) {
+		err := f.Close()
+		if err != nil {
+			slog.Error(err.Error())
+		}
+	}(f)
+
+	check(err)
+
+	data, err := (*b).ToJSON()
+	check(err)
+	_, err = f.Write(data)
+	check(err)
+}
+
+// ImportJson
+// - read the contents of a jsonfile to construct a new bag
+func ImportJson(path string) (*Bag[string], error) {
+	contents, err := os.ReadFile(path)
+	if err != nil {
+		slog.Error(err.Error())
+	}
+
+	b := New[string]()
+	check(err)
+
+	err = json.Unmarshal(contents, &b.m)
+	if err != nil {
+		slog.Error(err.Error())
+	}
+	return b, err
 }
